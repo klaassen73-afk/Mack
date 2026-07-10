@@ -36,9 +36,6 @@
     background:#d81f27;color:#fff;border:none;padding:12px 20px;border-radius:26px;
     font-size:14px;font-weight:700;letter-spacing:.2px;box-shadow:0 6px 20px rgba(216,31,39,.4)}
   .ar-cta:hover{background:#c01421}
-  .ar-note{display:none;position:fixed;top:150px;left:50%;transform:translateX(-50%);z-index:11;
-    background:rgba(20,23,28,.85);border:1px solid #3c434f;color:#c4c9d2;backdrop-filter:blur(6px);
-    padding:10px 16px;border-radius:12px;font-size:12.5px;max-width:82vw;text-align:center}
   .ar-cta svg{width:19px;height:19px}
   .utils{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:10}
   .ubtn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -52,7 +49,7 @@
 <body>
   <div id="scene" class="s-black"><img class="caret" src="assets/pinnacle-caret.svg" alt=""></div>
 
-  <model-viewer id="mv" src="assets/mack-gold.glb"
+  <model-viewer id="mv" src="assets/mack-bulldog.glb"
     camera-controls touch-action="pan-y"
     auto-rotate auto-rotate-delay="0"
     shadow-intensity="1" exposure="1.0"
@@ -65,8 +62,6 @@
       View Mack in your space
     </button>
   </model-viewer>
-
-  <div class="ar-note" id="ar-note">AR needs a supported phone browser — open this page in Safari (iPhone) or Chrome (Android).</div>
 
 
   <div class="brand"><img src="assets/pinnacle-logo.svg" alt="Logo"></div>
@@ -97,32 +92,48 @@
 <script>
   const mv=document.getElementById('mv');
 
-  // ---- finish variations (each is its own baked metal model) ----
+  // ---- finish (material) variations ----
   const finishes=[
-    {id:'gold',  n:'Gold',       src:'assets/mack-gold.glb',   sw:'linear-gradient(135deg,rgb(221, 206, 173) 0%,rgb(191, 169, 113) 48%,rgb(121, 106, 69) 100%)'},
-    {id:'silver',n:'Silver',     src:'assets/mack-silver.glb', sw:'linear-gradient(135deg,rgb(218, 219, 220) 0%,rgb(187, 188, 189) 48%,rgb(118, 118, 119) 100%)'},
-    {id:'copper',n:'Copper',     src:'assets/mack-copper.glb', sw:'linear-gradient(135deg,rgb(199, 177, 164) 0%,rgb(158, 120, 93) 48%,rgb(99, 74, 56) 100%)'},
-    {id:'black', n:'Blk Chrome', src:'assets/mack-black.glb',  sw:'linear-gradient(135deg,rgb(168, 168, 171) 0%,rgb(102, 102, 108) 48%,rgb(62, 62, 66) 100%)'},
+    {id:'gold',  n:'Gold',       b:[0.95,0.72,0.30,1], ro:0.20, sw:'linear-gradient(135deg,rgb(221, 206, 173) 0%,rgb(191, 169, 113) 48%,rgb(121, 106, 69) 100%)'},
+    {id:'silver',n:'Silver',     b:[0.90,0.91,0.93,1], ro:0.15, sw:'linear-gradient(135deg,rgb(218, 219, 220) 0%,rgb(187, 188, 189) 48%,rgb(118, 118, 119) 100%)'},
+    {id:'copper',n:'Copper',     b:[0.62,0.34,0.20,1], ro:0.28, sw:'linear-gradient(135deg,rgb(199, 177, 164) 0%,rgb(158, 120, 93) 48%,rgb(99, 74, 56) 100%)'},
+    {id:'black', n:'Blk Chrome', b:[0.24,0.24,0.27,1], ro:0.05, sw:'linear-gradient(135deg,rgb(168, 168, 171) 0%,rgb(102, 102, 108) 48%,rgb(62, 62, 66) 100%)'},
   ];
   const infos={
-    gold:  {t:'Gold · Purebred Mack'},
-    silver:{t:'Chrome · Factory Standard'},
-    copper:{t:'Copper · Electric'},
-    black: {t:'Black · Limited Edition'},
+    gold:  {t:'Gold · Purebred Mack', d:'Equipped exclusively with a Mack engine, transmission, and drive axles.'},
+    silver:{t:'Chrome · Factory Standard', d:'The standard factory ornament — indicates the driveline includes at least one non-Mack component.'},
+    copper:{t:'Copper · Electric', d:'Signifies a Mack electric truck, such as the LR Electric or MD Electric.'},
+    black: {t:'Black · Limited Edition', d:'Featured on limited runs like the Black Anthem; follows the chrome rules unless paired with a gold or chrome finish.'},
   };
-  let current=finishes[0];
+  let mats=[], orig=[], current=finishes[0];
+  function snapshot(){
+    if(!mv.model) return;
+    mats=mv.model.materials;
+    orig=mats.map(m=>{
+      const p=m.pbrMetallicRoughness;
+      let tex=null;
+      try{ tex=p.baseColorTexture ? p.baseColorTexture.texture : null; }catch(e){}
+      return {b:[...p.baseColorFactor], me:p.metallicFactor, ro:p.roughnessFactor, tex:tex};
+    });
+  }
   function applyFinish(f){
     current=f;
     const dz=document.getElementById('desig');
-    if(dz&&infos[f.id]) dz.querySelector('.dname').textContent=infos[f.id].t;
-    if(mv.getAttribute('src')!==f.src) mv.setAttribute('src', f.src);  // swaps model -> AR uses this finish
+    if(dz&&infos[f.id]){dz.querySelector('.dname').textContent=infos[f.id].t;}
+    if(!mv.model||!mats.length) return;
+    mats.forEach((m,i)=>{
+      const p=m.pbrMetallicRoughness;
+      if(f.id==='asis'){
+        try{ if(p.baseColorTexture) p.baseColorTexture.setTexture(orig[i].tex); }catch(e){}
+        p.setBaseColorFactor(orig[i].b); p.setMetallicFactor(orig[i].me); p.setRoughnessFactor(orig[i].ro);
+      }else{
+        try{ if(p.baseColorTexture) p.baseColorTexture.setTexture(null); }catch(e){}
+        p.setBaseColorFactor(f.b); p.setMetallicFactor(1); p.setRoughnessFactor(f.ro);
+      }
+    });
   }
   applyFinish(current);
-  mv.addEventListener('load',()=>{
-    const note=document.getElementById('ar-note');
-    const touch=window.matchMedia('(pointer:coarse)').matches;
-    if(note) note.style.display=(touch && !mv.canActivateAR)?'block':'none';
-  },{once:true});
+  mv.addEventListener('load',()=>{snapshot();applyFinish(current);});
   const fcont=document.getElementById('finishes');
   finishes.forEach((f,i)=>{
     const el=document.createElement('button');
