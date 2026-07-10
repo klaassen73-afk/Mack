@@ -4,7 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mack Bulldog - 3D Viewer</title>
-<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js">
+  (function(){
+    const loader=document.getElementById('loader'); if(!loader)return;
+    const pct=loader.querySelector('.lpct');
+    const hide=()=>{loader.style.opacity='0';setTimeout(()=>loader.style.display='none',480);};
+    mv.addEventListener('progress',e=>{const p=Math.max(0,Math.min(1,e.detail.totalProgress));
+      pct.textContent='Loading Mack\u2026 '+Math.round(p*100)+'%'; if(p>=1)hide();});
+    mv.addEventListener('load',hide);
+  })();
+</script>
 <style>
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
   #scene{position:fixed;inset:0;z-index:0}
@@ -44,9 +53,28 @@
   .ubtn:hover{background:#3a4150}
   .ubtn svg{width:20px;height:20px}
   .ubtn.active{background:#d81f27;border-color:#d81f27;color:#fff}
+
+  /* loading overlay */
+  #loader{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;pointer-events:none;transition:opacity .45s}
+  #loader .spin{width:48px;height:48px;border-radius:50%;border:4px solid rgba(255,255,255,.14);border-top-color:#d81f27;animation:ldspin .9s linear infinite}
+  #loader .lpct{font-size:13px;font-weight:600;letter-spacing:.3px;color:#c4c9d2}
+  @keyframes ldspin{to{transform:rotate(360deg)}}
+
+  /* mobile layout: stack the bottom UI so nothing overlaps */
+  @media (max-width:640px){
+    .hint{display:none}
+    .panel{bottom:78px !important;gap:10px}
+    .utils{left:50% !important;right:auto !important;transform:translateX(-50%) !important;bottom:16px !important}
+    .brand img{width:min(240px,72vw)}
+    .ar-cta{top:132px;font-size:13px;padding:11px 18px}
+    .caret{width:86vw}
+    .fsw .dog{width:42px;height:44px}
+  }
 </style>
 </head>
 <body>
+  <div id="loader"><div class="spin"></div><div class="lpct">Loading Mack&hellip;</div></div>
   <div id="scene" class="s-black"><img class="caret" src="assets/pinnacle-caret.svg" alt=""></div>
 
   <model-viewer id="mv" src="assets/mack-bulldog.glb"
